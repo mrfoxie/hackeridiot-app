@@ -1,0 +1,98 @@
+import 'dart:convert';
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:hackeridiot/components/CategoryItemWidget.dart';
+import 'package:hackeridiot/models/CategoryData.dart';
+import 'package:hackeridiot/network/RestApis.dart';
+import 'package:hackeridiot/screens/SubCategoryScreen.dart';
+import 'package:hackeridiot/shimmer/TopicShimmer.dart';
+import 'package:hackeridiot/utils/Constants.dart';
+import 'package:nb_utils/nb_utils.dart';
+
+import '../AppLocalizations.dart';
+
+class CategoryFragment extends StatefulWidget {
+  static String tag = '/CategoryScreen';
+
+  @override
+  CategoryFragmentState createState() => CategoryFragmentState();
+}
+
+class CategoryFragmentState extends State<CategoryFragment> {
+  @override
+  void initState() {
+    super.initState();
+    init();
+  }
+
+  Future<void> init() async {
+    //
+  }
+
+  List<CategoryData> getInitialData() {
+    List<CategoryData> list = [];
+    String s = getStringAsync(CATEGORY_DATA);
+
+    if (s.isNotEmpty) {
+      Iterable it = jsonDecode(s);
+      list.addAll(it.map((e) => CategoryData.fromJson(e)).toList());
+    }
+
+    return list;
+  }
+
+  @override
+  void setState(fn) {
+    if (mounted) super.setState(fn);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var appLocalization = AppLocalizations.of(context);
+
+    return Container(
+      height: context.height(),
+      width: context.width(),
+      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+      child: Stack(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(appLocalization.translate('category'), style: boldTextStyle()),
+            ],
+          ).paddingSymmetric(vertical: 20, horizontal: 16),
+          Positioned(
+            top: 50,
+            child: Container(
+              height: context.height(),
+              width: context.width(),
+              child: FutureBuilder<List<CategoryData>>(
+                initialData: getStringAsync(CATEGORY_DATA).isEmpty ? null : getInitialData(),
+                future: getCategories(),
+                builder: (_, snap) {
+                  if (snap.hasData) {
+                    setValue(CATEGORY_DATA, jsonEncode(snap.data));
+
+                    return SingleChildScrollView(
+                      child: Wrap(
+                        alignment: WrapAlignment.spaceEvenly,
+                        children: snap.data.map((data) {
+                          return CategoryItemWidget(data, onTap: () {
+                            SubCategoryScreen(data, snap.hasError).launch(context);
+                          });
+                        }).toList(),
+                      ).paddingAll(4),
+                    );
+                  }
+                  return snapWidgetHelper(snap, loadingWidget: TopicShimmer());
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
